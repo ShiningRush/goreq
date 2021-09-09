@@ -19,19 +19,21 @@ type Agent struct {
 	method string
 	ctx    context.Context
 
-	reqPreHandlers   []ReqPreHandler
-	respHandler      RespHandler
-	respWrapper      Wrapper
-	client           *http.Client
-	allowStatusCodes []int
-	retryOpt         *RetryOpt
+	reqPreHandlers      []ReqPreHandler
+	respHandler         RespHandler
+	respWrapper         Wrapper
+	client              *http.Client
+	expectedStatusCodes []int
+	retryOpt            *RetryOpt
 
 	existedOps []AgentOp
 }
 
 type RetryOpt struct {
-	MaxDelay      time.Duration
-	RetryBizError bool
+	// the max delay of interval
+	MaxDelay time.Duration
+	// RetryAppError indicate if retry when "RespWrapper validate failed"
+	RetryAppError bool
 	Attempts      int
 }
 
@@ -51,8 +53,8 @@ func (a *Agent) Do() error {
 			return err
 		}
 	}
-	if len(a.allowStatusCodes) == 0 {
-		a.allowStatusCodes = append(a.allowStatusCodes, http.StatusOK)
+	if len(a.expectedStatusCodes) == 0 {
+		a.expectedStatusCodes = append(a.expectedStatusCodes, http.StatusOK)
 	}
 
 	req, err := http.NewRequest(a.method, a.url, nil)
@@ -110,10 +112,8 @@ func (a *Agent) doHttp(req *http.Request) error {
 	}
 	defer resp.Body.Close()
 
-	if !a.isInAllowStatusCodes(resp.StatusCode) {
-		return &HttpCodeErr{
-			Resp: resp,
-		}
+	if !a.isInExpectedStatusCodes(resp.StatusCode) {
+		return NewHttpCodeErr(a.expectedStatusCodes, resp)
 	}
 
 	if a.respHandler != nil {
@@ -122,8 +122,8 @@ func (a *Agent) doHttp(req *http.Request) error {
 	return nil
 }
 
-func (a *Agent) isInAllowStatusCodes(code int) (find bool) {
-	for _, ac := range a.allowStatusCodes {
+func (a *Agent) isInExpectedStatusCodes(code int) (find bool) {
+	for _, ac := range a.expectedStatusCodes {
 		if ac == code {
 			find = true
 			return
@@ -151,9 +151,9 @@ func Retry(opt *RetryOpt) AgentOpFunc {
 	}
 }
 
-func AllowStatusCodes(codes []int) AgentOpFunc {
+func ExpectedStatusCodes(codes []int) AgentOpFunc {
 	return func(agent *Agent) error {
-		agent.allowStatusCodes = codes
+		agent.expectedStatusCodes = codes
 		return nil
 	}
 }
@@ -184,6 +184,7 @@ func RespWrapper(wrapper Wrapper) AgentOpFunc {
 	}
 }
 
+// CustomRespHandler specify a custom RespHandler
 func CustomRespHandler(handler RespHandler) AgentOpFunc {
 	return func(agent *Agent) error {
 		agent.respHandler = handler
@@ -191,6 +192,7 @@ func CustomRespHandler(handler RespHandler) AgentOpFunc {
 	}
 }
 
+// Get start a request with GET
 func Get(url string, ops ...AgentOp) *Agent {
 	return &Agent{
 		url:        url,
@@ -199,6 +201,7 @@ func Get(url string, ops ...AgentOp) *Agent {
 	}
 }
 
+// Post start a request with POST
 func Post(url string, ops ...AgentOp) *Agent {
 	return &Agent{
 		url:        url,
@@ -207,6 +210,7 @@ func Post(url string, ops ...AgentOp) *Agent {
 	}
 }
 
+// Put start a request with PUT
 func Put(url string, ops ...AgentOp) *Agent {
 	return &Agent{
 		url:        url,
@@ -215,6 +219,7 @@ func Put(url string, ops ...AgentOp) *Agent {
 	}
 }
 
+// Patch start a request with PATCH
 func Patch(url string, ops ...AgentOp) *Agent {
 	return &Agent{
 		url:        url,
@@ -223,6 +228,7 @@ func Patch(url string, ops ...AgentOp) *Agent {
 	}
 }
 
+// Delete start a request with DELETE
 func Delete(url string, ops ...AgentOp) *Agent {
 	return &Agent{
 		url:        url,

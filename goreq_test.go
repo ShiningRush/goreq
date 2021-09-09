@@ -1,0 +1,127 @@
+package goreq
+
+import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"net/http"
+	"testing"
+)
+
+func TestRawResp(t *testing.T) {
+	var resp http.Response
+	var bodyBytes []byte
+	err := Get("https://httpbin.org/get", RawResp(&resp, &bodyBytes)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
+
+	err = Post("https://httpbin.org/post", RawResp(&resp, &bodyBytes)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
+
+	err = Delete("https://httpbin.org/delete", RawResp(&resp, &bodyBytes)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
+
+	err = Put("https://httpbin.org/put", RawResp(&resp, &bodyBytes)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
+
+	err = Patch("https://httpbin.org/patch", RawResp(&resp, &bodyBytes)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
+}
+
+func TestAllowStatusCodes(t *testing.T) {
+	err := Get("https://httpbin.org/get", ExpectedStatusCodes([]int{http.StatusFound})).Do()
+	assert.NotNil(t, err)
+}
+
+type HttpBinResp struct {
+	Headers map[string]string `json:"headers"`
+	Data    string            `json:"data"`
+	Json    interface{}       `json:"json"`
+}
+
+type JsonRequest struct {
+	String string
+	Int    int
+}
+
+func TestJsonReqResp(t *testing.T) {
+	req := JsonRequest{
+		String: "hello",
+		Int:    666,
+	}
+	respBody := JsonRequest{}
+	resp := HttpBinResp{
+		Json: &respBody,
+	}
+	err := Post("https://httpbin.org/post",
+		JsonReq(req),
+		JsonResp(&resp)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, req, respBody)
+}
+
+type CountResultWrapper struct {
+	Headers map[string]string `json:"headers"`
+	Data    string            `json:"data"`
+	Json    interface{}       `json:"json"`
+
+	doValidationCallback  func() int
+	returnOkAfterRequests int
+}
+
+func (w *CountResultWrapper) SetData(ret interface{}) {
+	w.Json = ret
+}
+
+func (w *CountResultWrapper) Validate() error {
+	count := w.doValidationCallback()
+	if count == w.returnOkAfterRequests {
+		return nil
+	}
+
+	return fmt.Errorf("%d request is expected failed", count)
+}
+
+func TestRetryAndValidation(t *testing.T) {
+	req := JsonRequest{
+		String: "hello",
+		Int:    666,
+	}
+	respData := JsonRequest{}
+
+	callCount := 0
+	cb := func() int {
+		callCount++
+		return callCount
+	}
+
+	err := Post("https://httpbin.org/post",
+		JsonReq(req),
+		JsonResp(&respData),
+		RespWrapper(&CountResultWrapper{returnOkAfterRequests: 2, doValidationCallback: cb}),
+		Retry(&RetryOpt{
+			Attempts: 2,
+		}),
+	).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, req, respData)
+
+	callCount = 0
+	err = Post("https://httpbin.org/post",
+		JsonReq(req),
+		JsonResp(&respData),
+		RespWrapper(&CountResultWrapper{returnOkAfterRequests: 2, doValidationCallback: cb}),
+		Retry(&RetryOpt{
+			Attempts: 1,
+		}),
+	).Do()
+	assert.NotNil(t, err)
+}

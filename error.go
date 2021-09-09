@@ -6,15 +6,36 @@ import (
 	"net/http"
 )
 
+func NewHttpCodeErr(expectedCodes []int, resp *http.Response) *HttpCodeErr {
+	httpCodeErr := &HttpCodeErr{
+		ExpectedStatusCodes: expectedCodes,
+		StatusCode:          resp.StatusCode,
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		httpCodeErr.ReadBodyErr = err
+		return httpCodeErr
+	}
+	httpCodeErr.Body = body
+	return httpCodeErr
+}
+
 type HttpCodeErr struct {
-	Resp *http.Response
+	StatusCode          int
+	ExpectedStatusCodes []int
+
+	ReadBodyErr error
+	Body        []byte
 }
 
 func (e *HttpCodeErr) Error() string {
-	body, err := ioutil.ReadAll(e.Resp.Body)
-	if err != nil {
-		return fmt.Sprintf("http code is not ok, code:%d, body: %s", e.Resp.StatusCode, err)
+	if e.ReadBodyErr != nil {
+		return fmt.Sprintf("http code[%d] is not expected(%v) and read body failed: %s",
+			e.StatusCode,
+			e.ExpectedStatusCodes,
+			e.ReadBodyErr)
 	}
 
-	return fmt.Sprintf("http code is not ok, code:%d, body: %s", e.Resp.StatusCode, body)
+	return fmt.Sprintf("http code[%d] is not expected(%v), body: %s", e.StatusCode, e.ExpectedStatusCodes, e.Body)
 }

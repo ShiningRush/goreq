@@ -8,10 +8,13 @@ import (
 	"reflect"
 )
 
+// RespHandler you can implement some special cases
+// TIPS: Usually JsonResp, RawResp and HybridResp handle most situations
 type RespHandler interface {
 	HandleResponse(resp *http.Response, respWrapper Wrapper) error
 }
 
+// RawResp use http.Response and []byes to accept response
 func RawResp(resp *http.Response, bs *[]byte) *RawRespHandler {
 	return &RawRespHandler{
 		resp: resp,
@@ -19,7 +22,7 @@ func RawResp(resp *http.Response, bs *[]byte) *RawRespHandler {
 	}
 }
 
-// RawRespHandler
+// RawRespHandler is a wrapper to implement AgentOp and RespHandler
 type RawRespHandler struct {
 	resp *http.Response
 	bs   *[]byte
@@ -43,6 +46,8 @@ func (h *RawRespHandler) InitialAgent(a *Agent) error {
 	return nil
 }
 
+// HybridResp can handle hybrid response such as Json and Raw
+// you can use RespHandlerPredicate to indicate when use which resp handler with Predicate
 func HybridResp(predicate ...RespHandlerPredicate) *HybridHandler {
 	return &HybridHandler{predicates: predicate}
 }
@@ -52,6 +57,7 @@ type RespHandlerPredicate struct {
 	RespHandler RespHandler
 }
 
+// RawRespHandler is a wrapper to implement AgentOp and RespHandler
 type HybridHandler struct {
 	predicates []RespHandlerPredicate
 }
@@ -72,10 +78,12 @@ func (h *HybridHandler) InitialAgent(a *Agent) error {
 	return nil
 }
 
+// JsonResp use to handler json response, ret must be a ptr
 func JsonResp(ret interface{}) *JsonRespHandler {
 	return &JsonRespHandler{ret: ret}
 }
 
+// JsonRespHandler is a wrapper to implement AgentOp and RespHandler
 type JsonRespHandler struct {
 	ret interface{}
 }
