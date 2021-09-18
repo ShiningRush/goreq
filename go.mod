@@ -1,4 +1,4 @@
-module github.com/ShiningRush/goreq
+module github.com/shiningrush/goreq
 
 go 1.15
 
