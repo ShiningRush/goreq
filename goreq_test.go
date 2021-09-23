@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/url"
 	"testing"
 )
 
@@ -45,6 +46,7 @@ type HttpBinResp struct {
 	Headers map[string]string `json:"headers"`
 	Data    string            `json:"data"`
 	Json    interface{}       `json:"json"`
+	Form    interface{}       `json:"form"`
 }
 
 type JsonRequest struct {
@@ -66,6 +68,25 @@ func TestJsonReqResp(t *testing.T) {
 		JsonResp(&resp)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, req, respBody)
+}
+
+func TestFormReq(t *testing.T) {
+	req := url.Values{
+		"key1": []string{"v1"},
+		"key2": []string{"vv1", "vv2"},
+	}
+	resp := HttpBinResp{}
+	err := Post("https://httpbin.org/post",
+		FormReq(req),
+		JsonResp(&resp)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"key1": "v1",
+		"key2": []interface{}{
+			"vv1",
+			"vv2",
+		},
+	}, resp.Form)
 }
 
 type CountResultWrapper struct {
