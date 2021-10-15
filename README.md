@@ -4,7 +4,7 @@
 
 ---
 
-I have been using [gorequest](https://github.com/parnurzeal/gorequest) before, but the following pain points were found during use:
+I have been using [gorequest](https://github.com/parnurzeal/gorequest) before, but there are some pain points as beblow:
 - When using this library to call between services, it is impossible to insert some common processing logic. For example, the server usually return fields like `code`, and the client needs to check whether its value is validated
 - Maybe cause concurrency problems (share one agent)
 - Use short connection by default
@@ -74,7 +74,7 @@ If the content of the response is json format, we can use goreq deserialize the 
   assert.Equal(t, req, respBody)
 ```
 
-#### Heterogeneous response
+#### Hybrid response
 If the response is hybrid, such as a text/html when an error occurs, and json when it is normal, we can use `HybridResp` to handle different situations:
 ```go
 err := Post("https://httpbin.org/post",
