@@ -178,7 +178,9 @@ func Context(ctx context.Context) AgentOpFunc {
 func SetHeader(header http.Header) AgentOpFunc {
 	return func(agent *Agent) error {
 		agent.reqPreHandlers = append(agent.reqPreHandlers, ReqPreHandlerFunc(func(req *http.Request) (*http.Request, error) {
-			req.Header = header
+			for k, v := range header {
+				req.Header[k] = v
+			}
 			return nil, nil
 		}))
 		return nil
