@@ -2,12 +2,13 @@ package goreq
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"testing/iotest"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHttpCodeErr(t *testing.T) {

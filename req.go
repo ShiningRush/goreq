@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,7 +28,8 @@ func JsonReq(reqBody interface{}) AgentOp {
 			if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {
 				return nil, fmt.Errorf("json marshal failed: %w", err)
 			}
-			req.Body = ioutil.NopCloser(&buffer)
+			req.ContentLength = int64(buffer.Len())
+			req.Body = io.NopCloser(&buffer)
 			return nil, nil
 		}))
 		return nil
@@ -48,7 +49,9 @@ func FormReq(values url.Values) AgentOp {
 
 				req.URL.RawQuery = fmt.Sprintf("%s&%s", req.URL.RawQuery, values.Encode())
 			default:
-				req.Body = ioutil.NopCloser(strings.NewReader(values.Encode()))
+				r := strings.NewReader(values.Encode())
+				req.ContentLength = int64(r.Len())
+				req.Body = io.NopCloser(strings.NewReader(values.Encode()))
 			}
 			return req, nil
 		}))

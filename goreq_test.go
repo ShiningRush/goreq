@@ -2,43 +2,44 @@ package goreq
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRawResp(t *testing.T) {
 	var resp http.Response
 	var bodyBytes []byte
-	err := Get("https://httpbin.org/get", RawResp(&resp, &bodyBytes)).Do()
+	err := Get("http://httpbin.org/get", RawResp(&resp, &bodyBytes)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
 
-	err = Post("https://httpbin.org/post", RawResp(&resp, &bodyBytes)).Do()
+	err = Post("http://httpbin.org/post", RawResp(&resp, &bodyBytes)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
 
-	err = Delete("https://httpbin.org/delete", RawResp(&resp, &bodyBytes)).Do()
+	err = Delete("http://httpbin.org/delete", RawResp(&resp, &bodyBytes)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
 
-	err = Put("https://httpbin.org/put", RawResp(&resp, &bodyBytes)).Do()
+	err = Put("http://httpbin.org/put", RawResp(&resp, &bodyBytes)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
 
-	err = Patch("https://httpbin.org/patch", RawResp(&resp, &bodyBytes)).Do()
+	err = Patch("http://httpbin.org/patch", RawResp(&resp, &bodyBytes)).Do()
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, int(resp.ContentLength), len(bodyBytes))
 }
 
 func TestAllowStatusCodes(t *testing.T) {
-	err := Get("https://httpbin.org/get", ExpectedStatusCodes([]int{http.StatusFound})).Do()
+	err := Get("http://httpbin.org/get", ExpectedStatusCodes([]int{http.StatusFound})).Do()
 	assert.NotNil(t, err)
 }
 
@@ -63,7 +64,7 @@ func TestJsonReqResp(t *testing.T) {
 	resp := HttpBinResp{
 		Json: &respBody,
 	}
-	err := Post("https://httpbin.org/post",
+	err := Post("http://httpbin.org/post",
 		JsonReq(req),
 		JsonResp(&resp)).Do()
 	assert.NoError(t, err)
@@ -76,7 +77,7 @@ func TestFormReq(t *testing.T) {
 		"key2": []string{"vv1", "vv2"},
 	}
 	resp := HttpBinResp{}
-	err := Post("https://httpbin.org/post",
+	err := Post("http://httpbin.org/post",
 		FormReq(req),
 		JsonResp(&resp)).Do()
 	assert.NoError(t, err)
@@ -124,7 +125,7 @@ func TestRetryAndValidation(t *testing.T) {
 		return callCount
 	}
 
-	err := Post("https://httpbin.org/post",
+	err := Post("http://httpbin.org/post",
 		JsonReq(req),
 		JsonResp(&respData),
 		RespWrapper(&CountResultWrapper{returnOkAfterRequests: 2, doValidationCallback: cb}),
@@ -136,7 +137,7 @@ func TestRetryAndValidation(t *testing.T) {
 	assert.Equal(t, req, respData)
 
 	callCount = 0
-	err = Post("https://httpbin.org/post",
+	err = Post("http://httpbin.org/post",
 		JsonReq(req),
 		JsonResp(&respData),
 		RespWrapper(&CountResultWrapper{returnOkAfterRequests: 2, doValidationCallback: cb}),

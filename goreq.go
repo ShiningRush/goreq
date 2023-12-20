@@ -3,10 +3,11 @@ package goreq
 import (
 	"context"
 	"fmt"
-	"github.com/avast/retry-go"
 	"net/http"
 	"reflect"
 	"time"
+
+	"github.com/avast/retry-go"
 )
 
 var (
@@ -57,24 +58,6 @@ func (a *Agent) Do() error {
 		a.expectedStatusCodes = append(a.expectedStatusCodes, http.StatusOK)
 	}
 
-	req, err := http.NewRequest(a.method, a.url, nil)
-	if err != nil {
-		return fmt.Errorf("new request failed: %w", err)
-	}
-	if a.ctx != nil {
-		req = req.WithContext(a.ctx)
-	}
-
-	for _, h := range a.reqPreHandlers {
-		newReq, err := h.PreHandleRequest(req)
-		if err != nil {
-			return err
-		}
-		if newReq != nil {
-			req = newReq
-		}
-	}
-
 	if a.client == nil {
 		a.client = DefaultClient
 	}
@@ -83,13 +66,35 @@ func (a *Agent) Do() error {
 	}
 
 	if a.retryOpt == nil {
-		return a.doHttp(req)
+		return a.doHttp()
 	}
 
-	return a.retryDoHttp(req)
+	return a.retryDoHttp()
 }
 
-func (a *Agent) retryDoHttp(req *http.Request) error {
+func (a *Agent) prepareRequest() (*http.Request, error) {
+	req, err := http.NewRequest(a.method, a.url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("new request failed: %w", err)
+	}
+	if a.ctx != nil {
+		req = req.WithContext(a.ctx)
+	}
+
+	for _, h := range a.reqPreHandlers {
+		newReq, err := h.PreHandleRequest(req)
+		if err != nil {
+			return nil, err
+		}
+		if newReq != nil {
+			req = newReq
+		}
+	}
+
+	return req, nil
+}
+
+func (a *Agent) retryDoHttp() error {
 	attempts := 6
 	if a.retryOpt.Attempts != 0 {
 		attempts = a.retryOpt.Attempts
@@ -99,13 +104,18 @@ func (a *Agent) retryDoHttp(req *http.Request) error {
 	if a.retryOpt.MaxDelay != 0 {
 		maxDelay = a.retryOpt.MaxDelay
 	}
-	return retry.Do(func() error { return a.doHttp(req) },
+
+	return retry.Do(func() error { return a.doHttp() },
 		retry.Attempts(uint(attempts)),
 		retry.MaxDelay(maxDelay),
-		retry.Context(req.Context()))
+		retry.Context(a.ctx))
 }
 
-func (a *Agent) doHttp(req *http.Request) error {
+func (a *Agent) doHttp() error {
+	req, err := a.prepareRequest()
+	if err != nil {
+		return err
+	}
 	resp, err := a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request do failed: %w", err)
@@ -198,6 +208,7 @@ func Get(url string, ops ...AgentOp) *Agent {
 		url:        url,
 		method:     http.MethodGet,
 		existedOps: ops,
+		ctx:        context.TODO(),
 	}
 }
 
@@ -207,6 +218,7 @@ func Post(url string, ops ...AgentOp) *Agent {
 		url:        url,
 		method:     http.MethodPost,
 		existedOps: ops,
+		ctx:        context.TODO(),
 	}
 }
 
@@ -216,6 +228,7 @@ func Put(url string, ops ...AgentOp) *Agent {
 		url:        url,
 		method:     http.MethodPut,
 		existedOps: ops,
+		ctx:        context.TODO(),
 	}
 }
 
@@ -225,6 +238,7 @@ func Patch(url string, ops ...AgentOp) *Agent {
 		url:        url,
 		method:     http.MethodPatch,
 		existedOps: ops,
+		ctx:        context.TODO(),
 	}
 }
 
@@ -234,5 +248,6 @@ func Delete(url string, ops ...AgentOp) *Agent {
 		url:        url,
 		method:     http.MethodDelete,
 		existedOps: ops,
+		ctx:        context.TODO(),
 	}
 }
