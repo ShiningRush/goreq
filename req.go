@@ -20,6 +20,19 @@ func (f ReqPreHandlerFunc) PreHandleRequest(req *http.Request) (*http.Request, e
 	return f(req)
 }
 
+func TextReq(reqBody string) AgentOp {
+	return AgentOpFunc(func(agent *Agent) error {
+		agent.reqPreHandlers = append(agent.reqPreHandlers, ReqPreHandlerFunc(func(req *http.Request) (*http.Request, error) {
+			req.Header.Add("Content-Type", "text/plain; charset=utf-8")
+			r := strings.NewReader(reqBody)
+			req.ContentLength = int64(r.Len())
+			req.Body = io.NopCloser(r)
+			return nil, nil
+		}))
+		return nil
+	})
+}
+
 func JsonReq(reqBody interface{}) AgentOp {
 	return AgentOpFunc(func(agent *Agent) error {
 		agent.reqPreHandlers = append(agent.reqPreHandlers, ReqPreHandlerFunc(func(req *http.Request) (*http.Request, error) {

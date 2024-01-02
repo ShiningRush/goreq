@@ -71,6 +71,15 @@ func TestJsonReqResp(t *testing.T) {
 	assert.Equal(t, req, respBody)
 }
 
+func TestTextReqResp(t *testing.T) {
+	resp := HttpBinResp{}
+	err := Post("http://httpbin.org/post",
+		TextReq("test-text"),
+		JsonResp(&resp)).Do()
+	assert.NoError(t, err)
+	assert.Equal(t, "test-text", resp.Data)
+}
+
 func TestFormReq(t *testing.T) {
 	req := url.Values{
 		"key1": []string{"v1"},
